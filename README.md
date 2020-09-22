@@ -8,4 +8,4 @@ Features:
 - Tape renaming
 - Speed control
 
-![https://i.imgur.com/gmjGeRHl.png](TAPAMP screenshot)
+ ![tapamp screenshot](https://i.imgur.com/gmjGeRHl.png)
