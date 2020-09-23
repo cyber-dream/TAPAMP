@@ -2,7 +2,7 @@ local GUI = require("GUI")
 local system = require("System")
 local color = require("Color")
 local event = require("event")
-
+local filesystem = require("filesystem")
 if not component.isAvailable("tape_drive") then
   GUI.alert("no tape drive")
   window:remove()
@@ -10,6 +10,23 @@ else
   tape = component.get("tape_drive")
 end
 
+local settings = {}
+
+local version = "v1.3"
+
+local function loadSettings()
+  if (filesystem.exists("/Users/dart/Application data/TAPAMP/Config.cfg")) then
+    settings = filesystem.readTable("/Users/" .. system.getUser() .. "/Application data/TAPAMP/Config.cfg")
+  else
+    settings["volume"] = 0.5
+    settings["speed"] = 3
+    settings["window_posx"] = 50 
+    settings["window_posy"] = 70  
+  end
+end
+
+loadSettings()
+--GUI.alert(settings["volume"])
 local function getTapeName()
   if (tape.getLabel() == nil) then
     return "No tape"
@@ -21,6 +38,24 @@ local function getTapeName()
     end
   end
 end
+  
+local function setSpeedByComboboxId(id)
+  if (id == 1) then
+       tape.setSpeed(0.25)
+  end
+  if (id == 2) then
+     tape.setSpeed(0.5)
+  end
+  if (id == 3) then
+     tape.setSpeed(1)
+  end
+  if (id == 4) then
+     tape.setSpeed(1.5)
+  end
+  if (id == 5) then
+     tape.setSpeed(2)
+  end
+end
 
 local function getTapePos()
   if (tape.getPosition() == 0.0) then 
@@ -30,8 +65,10 @@ local function getTapePos()
   end
 end 
 
-
 local workspace, window, menu = system.addWindow(GUI.titledWindow(1, 1, 60, 14, "TAPAMP"))
+
+--window.x = settings["window_posx"] Not work
+--window.y = settings["window_posy"]
 
 window.actionButtons.maximize:remove()
 
@@ -70,7 +107,7 @@ contextMenu:addSeparator()
 
 local layout = window:addChild(GUI.layout(1, 1, window.width, window.height, 1, 1))
 
-window:addChild(GUI.text(56, 14, 0x111111, "v 1.2"))
+window:addChild(GUI.text(56, 14, 0x111111, version))
 
 local casseteLabel = window:addChild(GUI.text(25, 3, 0x33DB40, "Cassette Label"))
 
@@ -94,35 +131,23 @@ tapeSpeedcomboBox:addItem("0.5x")
 tapeSpeedcomboBox:addItem("1x").onTouch = function() end
 tapeSpeedcomboBox:addItem("1.5x")
 tapeSpeedcomboBox:addItem("2x")
-tapeSpeedcomboBox.selectedItem = 3 --temporary solution, need to implement settings in appdata
+tapeSpeedcomboBox.selectedItem = settings["speed"]
+setSpeedByComboboxId(settings["speed"]) --temporary solution, need to implement settings in appdata
 
 tapeSpeedcomboBox.onItemSelected = 
   function(speed) 
-    if (speed == 1) then
-       tape.setSpeed(0.25)
-    end
-    if (speed == 2) then
-       tape.setSpeed(0.5)
-    end
-    if (speed == 3) then
-       tape.setSpeed(1)
-    end
-    if (speed == 4) then
-       tape.setSpeed(1.5)
-    end
-    if (speed == 5) then
-       tape.setSpeed(2)
-    end
+    setSpeedByComboboxId(speed)
   end
+
 window:addChild(window:addChild(GUI.text(24, 7, 0x000000, "Volume:")))
 
-local tapeVolumeSlider = window:addChild(GUI.slider(32, 7, 26, 0xFF9240, 0x0, 0xFFFFFF, 0xAAAAAA, 0, 100, 50, false))
+local tapeVolumeSlider = window:addChild(GUI.slider(32, 7, 26, 0xFF9240, 0x0, 0xFFFFFF, 0xAAAAAA, 0, 100, settings["volume"] * 100, false))
 
 tapeVolumeSlider.onValueChanged = function()
   tape.setVolume(tapeVolumeSlider.value / 100)
 end
  
-tape.setVolume(0.5) --temporary solution, need to implement settings in appdata
+tape.setVolume(settings["volume"]) --temporary solution, need to implement settings in appdata
 
 local tapeRewindButton = window:addChild(GUI.button(4, 11, 8, 3, 0xFFFFFF, 0x555555, 0x880000, 0xFFFFFF, "<<"))
 
@@ -168,9 +193,19 @@ function Update()
   tapePosSlider.value = getTapePos()
 end
 
+local function saveSettings()
+  settings["volume"] = tapeVolumeSlider.value / 100
+  settings["speed"] = tapeSpeedcomboBox.selectedItem
+  settings["window_posx"] = window.x 
+  settings["window_posy"] = window.y 
+  
+  filesystem.writeTable("/Users/" .. system.getUser() .. "/Application data/TAPAMP/Config.cfg", settings)
+end
+
 function onClose(_handlerUpdate, _window)
   event.removeHandler(_handlerUpdate)
   _window:remove()
+  saveSettings()
 end
 
 workspace:draw()
